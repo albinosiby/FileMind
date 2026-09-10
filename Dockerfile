@@ -14,6 +14,10 @@ RUN npm ci --omit=dev
 COPY --chown=node:node public ./public
 COPY --chown=node:node src ./src
 
+# Uploads and conversion results are temporary, but must be writable by the
+# unprivileged application user at runtime.
+RUN mkdir -p uploads outputs && chown -R node:node uploads outputs
+
 ENV NODE_ENV=production
 EXPOSE 10000
 USER node
