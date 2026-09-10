@@ -1,9 +1,10 @@
 import { createWriteStream } from 'node:fs';
-import { access, mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { access, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import archiver from 'archiver';
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
@@ -123,9 +124,126 @@ async function makeArchive(files, destination) {
   await finished;
 }
 
+function sortNaturally(files) {
+  return [...files].sort((first, second) => first.localeCompare(second, undefined, { numeric: true }));
+}
+
+async function command(binary, argumentsList, errorMessage, options = {}) {
+  try {
+    return await execFileAsync(binary, argumentsList, { timeout: 120_000, ...options });
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error(`${binary} is not available on this server. ${errorMessage}`);
+    throw new Error(errorMessage);
+  }
+}
+
+async function resultFromFiles(files, requestDirectory, archiveFilename = 'filemind-results.zip') {
+  if (files.length === 1) {
+    const file = files[0];
+    return { path: file, filename: path.basename(file), mimeType: formatMimeType(extensionOf(file)), directory: requestDirectory };
+  }
+  const archivePath = path.join(requestDirectory, archiveFilename);
+  await makeArchive(files, archivePath);
+  return { path: archivePath, filename: archiveFilename, mimeType: formatMimeType('zip'), directory: requestDirectory };
+}
+
+async function mergePdfs(files, requestDirectory) {
+  const outputPath = path.join(requestDirectory, 'filemind-merged.pdf');
+  await command('pdfunite', [...files.map((file) => file.path), outputPath], 'FileMind could not merge these PDFs. Check that they are not password protected.');
+  return { path: outputPath, filename: 'filemind-merged.pdf', mimeType: formatMimeType('pdf'), directory: requestDirectory };
+}
+
+async function splitPdfs(files, requestDirectory, options) {
+  const generated = [];
+  for (const file of files) {
+    const baseName = safeBaseName(file.originalname);
+    const pattern = path.join(requestDirectory, `${baseName}-page-%d.pdf`);
+    const argumentsList = [];
+    if (options.operation === 'pdf-extract' && options.pageStart) argumentsList.push('-f', String(options.pageStart));
+    if (options.operation === 'pdf-extract' && options.pageEnd) argumentsList.push('-l', String(options.pageEnd));
+    argumentsList.push(file.path, pattern);
+    await command('pdfseparate', argumentsList, 'FileMind could not extract pages from this PDF. Check that it is not password protected.');
+    const pages = sortNaturally((await readdir(requestDirectory))
+      .filter((name) => name.startsWith(`${baseName}-page-`) && name.endsWith('.pdf'))
+      .map((name) => path.join(requestDirectory, name)));
+    generated.push(...pages);
+  }
+  if (!generated.length) throw new Error('No PDF pages could be extracted.');
+  return resultFromFiles(generated, requestDirectory, 'filemind-extracted-pages.zip');
+}
+
+async function compressPdfs(files, requestDirectory) {
+  const generated = [];
+  for (const file of files) {
+    const outputPath = path.join(requestDirectory, `${safeBaseName(file.originalname)}-compressed.pdf`);
+    await command('gs', [
+      '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.4', '-dPDFSETTINGS=/ebook',
+      '-dNOPAUSE', '-dQUIET', '-dBATCH', `-sOutputFile=${outputPath}`, file.path
+    ], 'FileMind could not compress this PDF. Check that it is not password protected.');
+    generated.push(outputPath);
+  }
+  return resultFromFiles(generated, requestDirectory, 'filemind-compressed-pdfs.zip');
+}
+
+async function convertDocumentsToPdf(files, requestDirectory) {
+  const generated = [];
+  const profileDirectory = path.join(requestDirectory, 'office-profile');
+  await ensureDirectory(profileDirectory);
+  for (const file of files) {
+    await command('soffice', [
+      '--headless', `-env:UserInstallation=${pathToFileURL(profileDirectory).href}`,
+      '--convert-to', 'pdf', '--outdir', requestDirectory, file.path
+    ], 'FileMind could not convert this document. Check that it is a supported, unprotected Office file.');
+    const generatedPath = path.join(requestDirectory, `${path.basename(file.path, path.extname(file.path))}.pdf`);
+    const outputPath = path.join(requestDirectory, `${safeBaseName(file.originalname)}.pdf`);
+    const exists = await stat(generatedPath).catch(() => null);
+    if (!exists) throw new Error(`${file.originalname} could not be converted to PDF.`);
+    await rename(generatedPath, outputPath);
+    generated.push(outputPath);
+  }
+  return resultFromFiles(generated, requestDirectory, 'filemind-documents-as-pdf.zip');
+}
+
+async function extractOcrText(files, requestDirectory, options) {
+  const generated = [];
+  for (const file of files) {
+    const baseName = safeBaseName(file.originalname);
+    const outputPath = path.join(requestDirectory, `${baseName}-ocr.txt`);
+    if (isPdfFile(file.originalname)) {
+      const pagePrefix = path.join(requestDirectory, `${baseName}-ocr-page`);
+      await command('pdftoppm', ['-r', '200', '-png', file.path, pagePrefix], 'FileMind could not read this PDF for OCR.');
+      const pages = sortNaturally((await readdir(requestDirectory))
+        .filter((name) => name.startsWith(`${baseName}-ocr-page-`) && name.endsWith('.png'))
+        .map((name) => path.join(requestDirectory, name)));
+      if (!pages.length) throw new Error('No readable pages were found for OCR.');
+      const pageText = [];
+      for (let index = 0; index < pages.length; index += 1) {
+        const textBase = path.join(requestDirectory, `${baseName}-page-text-${index + 1}`);
+        await command('tesseract', [pages[index], textBase, '-l', options.ocrLanguage, 'txt'], 'FileMind could not recognize text in this PDF.');
+        pageText.push(`--- Page ${index + 1} ---\n${await readFile(`${textBase}.txt`, 'utf8')}`);
+        await rm(pages[index], { force: true });
+        await rm(`${textBase}.txt`, { force: true });
+      }
+      await writeFile(outputPath, pageText.join('\n\n').trim() + '\n');
+    } else {
+      const textBase = path.join(requestDirectory, `${baseName}-ocr`);
+      await command('tesseract', [file.path, textBase, '-l', options.ocrLanguage, 'txt'], 'FileMind could not recognize text in this image.');
+      await rename(`${textBase}.txt`, outputPath);
+    }
+    generated.push(outputPath);
+  }
+  return resultFromFiles(generated, requestDirectory, 'filemind-ocr-text.zip');
+}
+
 export async function convertFiles(files, options, requestId) {
   const requestDirectory = path.join(outputDirectory, requestId);
   await ensureDirectory(requestDirectory);
+
+  if (options.operation === 'pdf-merge') return mergePdfs(files, requestDirectory);
+  if (options.operation === 'pdf-split' || options.operation === 'pdf-extract') return splitPdfs(files, requestDirectory, options);
+  if (options.operation === 'pdf-compress') return compressPdfs(files, requestDirectory);
+  if (options.operation === 'document-pdf') return convertDocumentsToPdf(files, requestDirectory);
+  if (options.operation === 'ocr') return extractOcrText(files, requestDirectory, options);
 
   if (options.outputFormat === 'pdf') {
     const outputPath = path.join(requestDirectory, 'filemind-converted.pdf');

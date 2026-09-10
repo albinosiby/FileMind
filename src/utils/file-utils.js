@@ -1,7 +1,9 @@
 import path from 'node:path';
 
 export const IMAGE_FORMATS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'svg']);
-export const INPUT_FORMATS = new Set([...IMAGE_FORMATS, 'pdf']);
+export const PDF_FORMATS = new Set(['pdf']);
+export const OFFICE_FORMATS = new Set(['doc', 'docx', 'odt', 'rtf', 'xls', 'xlsx', 'ods', 'csv', 'ppt', 'pptx', 'odp']);
+export const INPUT_FORMATS = new Set([...IMAGE_FORMATS, ...PDF_FORMATS, ...OFFICE_FORMATS]);
 export const OUTPUT_FORMATS = new Set(['jpg', 'png', 'webp', 'pdf']);
 
 export function extensionOf(filename) {
@@ -25,7 +27,11 @@ export function isImageFile(filename) {
 }
 
 export function isPdfFile(filename) {
-  return extensionOf(filename) === 'pdf';
+  return PDF_FORMATS.has(extensionOf(filename));
+}
+
+export function isOfficeFile(filename) {
+  return OFFICE_FORMATS.has(extensionOf(filename));
 }
 
 export function isSupportedInput(filename) {
@@ -37,6 +43,8 @@ export function formatMimeType(format) {
     jpg: 'image/jpeg',
     png: 'image/png',
     webp: 'image/webp',
-    pdf: 'application/pdf'
+    pdf: 'application/pdf',
+    txt: 'text/plain; charset=utf-8',
+    zip: 'application/zip'
   }[normalizedFormat(format)] || 'application/octet-stream';
 }

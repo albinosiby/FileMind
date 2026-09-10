@@ -3,7 +3,10 @@ FROM node:24-bookworm-slim
 # Poppler provides pdftoppm for PDF-to-image conversion. ImageMagick with
 # libheif provides the HEIC fallback used by the conversion service.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends poppler-utils imagemagick libheif1 \
+  && apt-get install -y --no-install-recommends \
+    ghostscript imagemagick libheif1 poppler-utils \
+    libreoffice-core-nogui libreoffice-writer-nogui libreoffice-calc-nogui libreoffice-impress-nogui \
+    tesseract-ocr tesseract-ocr-eng \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -29,17 +29,17 @@
         <section class="hero container" aria-labelledby="hero-title">
           <p class="eyebrow">PRIVATE FILE UTILITY</p>
           <h1 id="hero-title">Convert files <span>without the clutter</span></h1>
-          <p class="hero-copy">Convert, compress, resize, crop, and batch process your images and PDFs in one clean, private workspace.</p>
+          <p class="hero-copy">Convert, compress, edit, merge, scan, and batch process images, PDFs, and Office documents in one clean, private workspace.</p>
 
           <section class="upload-panel soft-panel" id="workspace" aria-labelledby="upload-title">
             <form id="convert-form" novalidate>
-              <input id="file-input" name="files" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.svg,.heic,.heif" multiple hidden />
+              <input id="file-input" name="files" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.svg,.heic,.heif,.doc,.docx,.odt,.rtf,.xls,.xlsx,.ods,.csv,.ppt,.pptx,.odp" multiple hidden />
               <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-describedby="upload-help">
                 <span class="upload-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.4 17.5a4.5 4.5 0 0 0-1.5-8.73A7 7 0 0 0 5.2 10.3 3.8 3.8 0 0 0 5 17.9"/></svg>
                 </span>
                 <h2 id="upload-title">Drop files here, or click to browse</h2>
-                <p id="upload-help">JPG, PNG, WebP, PDF, SVG, HEIC · Up to 25 MB each</p>
+                <p id="upload-help">Images, PDFs, Word, Excel, PowerPoint, SVG, HEIC · Up to 25 MB each</p>
                 <button class="button button-primary" id="choose-files" type="button">Choose files</button>
                 <p class="privacy-line"><span aria-hidden="true">♙</span> Files deleted automatically after processing</p>
               </div>
@@ -57,19 +57,33 @@
             <div class="file-list" id="file-list" aria-live="polite"></div>
 
             <div class="conversion-settings" aria-label="Conversion settings">
-              <div class="settings-row tool-tabs" role="group" aria-label="Choose a tool">
+              <p class="tool-group-label">IMAGE TOOLS</p>
+              <div class="settings-row tool-tabs" role="group" aria-label="Choose an image tool">
                 <button class="tool-tab is-active" type="button" data-operation="convert">Convert</button>
                 <button class="tool-tab" type="button" data-operation="compress">Compress</button>
                 <button class="tool-tab" type="button" data-operation="resize">Resize</button>
                 <button class="tool-tab" type="button" data-operation="crop">Crop</button>
               </div>
 
+              <p class="tool-group-label">PDF, DOCUMENT &amp; TEXT</p>
+              <div class="settings-row tool-tabs" role="group" aria-label="Choose a PDF, document, or OCR tool">
+                <button class="tool-tab" type="button" data-operation="pdf-merge">Merge PDFs</button>
+                <button class="tool-tab" type="button" data-operation="pdf-split">Split PDF</button>
+                <button class="tool-tab" type="button" data-operation="pdf-extract">Extract pages</button>
+                <button class="tool-tab" type="button" data-operation="pdf-compress">Compress PDF</button>
+                <button class="tool-tab" type="button" data-operation="document-pdf">Document → PDF</button>
+                <button class="tool-tab" type="button" data-operation="ocr">OCR → Text</button>
+              </div>
+
               <div class="settings-row fields-row">
-                <label class="field"><span>Convert to</span><select id="output-format" name="outputFormat"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option><option value="pdf">PDF</option></select></label>
+                <label class="field output-format-field"><span>Convert to</span><select id="output-format" name="outputFormat"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option><option value="pdf">PDF</option></select></label>
                 <label class="field quality-field"><span>Quality <b id="quality-value">82</b></span><input id="quality" name="quality" type="range" min="20" max="100" value="82" /></label>
                 <label class="field dimension-field"><span>Width</span><input id="width" name="width" type="number" min="1" max="10000" placeholder="Auto" /></label>
                 <label class="field dimension-field"><span>Height</span><input id="height" name="height" type="number" min="1" max="10000" placeholder="Auto" /></label>
                 <label class="field fit-field"><span>Fit</span><select id="fit" name="fit"><option value="cover">Fill frame</option><option value="contain">Keep all</option></select></label>
+                <label class="field page-start-field" hidden><span>First page</span><input id="page-start" name="pageStart" type="number" min="1" max="10000" placeholder="1" /></label>
+                <label class="field page-end-field" hidden><span>Last page</span><input id="page-end" name="pageEnd" type="number" min="1" max="10000" placeholder="All" /></label>
+                <label class="field ocr-language-field" hidden><span>Language</span><select id="ocr-language" name="ocrLanguage"><option value="eng">English</option></select></label>
               </div>
               <p class="settings-hint" id="settings-hint">Choose an output format. Your files keep their original quality unless you choose compression.</p>
             </div>
@@ -87,9 +101,11 @@
           <div class="section-intro"><p class="eyebrow">WHAT FILEMIND HANDLES</p><h2 id="tools-title">The essentials, kept simple.</h2></div>
           <div class="tool-grid">
             <article class="tool-card"><span>01</span><h3>Image conversion</h3><p>JPG, PNG, and WebP in either direction.</p></article>
-            <article class="tool-card"><span>02</span><h3>PDF tools</h3><p>Create PDFs from images or export pages as images.</p></article>
+            <article class="tool-card"><span>02</span><h3>PDF tools</h3><p>Merge, split, extract pages, compress, or export PDF pages as images.</p></article>
             <article class="tool-card"><span>03</span><h3>Image refinement</h3><p>Compress, resize, and crop with precise controls.</p></article>
             <article class="tool-card"><span>04</span><h3>Batch processing</h3><p>Convert up to ten files and receive one tidy ZIP.</p></article>
+            <article class="tool-card"><span>05</span><h3>Document to PDF</h3><p>Export Word, Excel, PowerPoint, OpenDocument, CSV, and RTF files as PDFs.</p></article>
+            <article class="tool-card"><span>06</span><h3>OCR text extraction</h3><p>Turn text in scanned images or PDFs into editable text files.</p></article>
           </div>
         </section>
 
@@ -103,6 +119,7 @@
           <details><summary>Do I need an account?</summary><p>No. Basic conversions work immediately without registration.</p></details>
           <details><summary>What happens to my files?</summary><p>They are kept temporarily for processing and removed automatically after download or scheduled cleanup.</p></details>
           <details><summary>Will conversion reduce image quality?</summary><p>Not by default. JPG and WebP are compressed formats, so their selected quality affects size and fidelity. PNG output remains lossless unless palette compression is selected.</p></details>
+          <details><summary>How does OCR work?</summary><p>OCR reads text from image and PDF pages, then provides it as a downloadable text file. Results are strongest for clear, high-resolution documents in English.</p></details>
         </section>
       </main>
 

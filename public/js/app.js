@@ -7,11 +7,15 @@ const fileWorkspace = document.querySelector('#file-workspace');
 const fileList = document.querySelector('#file-list');
 const fileCount = document.querySelector('#file-count');
 const outputFormat = document.querySelector('#output-format');
+const outputFormatField = document.querySelector('.output-format-field');
 const quality = document.querySelector('#quality');
 const qualityValue = document.querySelector('#quality-value');
 const widthInput = document.querySelector('#width');
 const heightInput = document.querySelector('#height');
 const fitInput = document.querySelector('#fit');
+const pageStartInput = document.querySelector('#page-start');
+const pageEndInput = document.querySelector('#page-end');
+const ocrLanguageInput = document.querySelector('#ocr-language');
 const settingsHint = document.querySelector('#settings-hint');
 const convertForm = document.querySelector('#convert-form');
 const convertButton = document.querySelector('#convert-button');
@@ -20,12 +24,30 @@ const toolTabs = document.querySelectorAll('.tool-tab');
 
 const MAX_FILES = 10;
 const MAX_SIZE = 25 * 1024 * 1024;
-const acceptedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'pdf', 'svg', 'heic', 'heif']);
+const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'svg', 'heic', 'heif']);
+const pdfExtensions = new Set(['pdf']);
+const officeExtensions = new Set(['doc', 'docx', 'odt', 'rtf', 'xls', 'xlsx', 'ods', 'csv', 'ppt', 'pptx', 'odp']);
+const acceptedExtensions = new Set([...imageExtensions, ...pdfExtensions, ...officeExtensions]);
+const toolDetails = {
+  convert: { label: 'Convert files', hint: 'Choose an output format. PDF pages export as images; multiple outputs download as a ZIP.' },
+  compress: { label: 'Compress images', hint: 'Choose a quality level to reduce file size. Lower values create smaller files.' },
+  resize: { label: 'Resize images', hint: 'Set one dimension to preserve proportions, or set both for your chosen fit.' },
+  crop: { label: 'Crop images', hint: 'Enter a final frame size. FileMind crops from the center.' },
+  'pdf-merge': { label: 'Merge PDFs', hint: 'Choose two or more PDFs. They will be combined in the order shown.', fixedOutput: 'pdf' },
+  'pdf-split': { label: 'Split PDF', hint: 'Each PDF page is exported separately. Multi-page results download as a ZIP.', fixedOutput: 'pdf' },
+  'pdf-extract': { label: 'Extract pages', hint: 'Optionally set the first and last page to extract. Leave both blank for all pages.', fixedOutput: 'pdf' },
+  'pdf-compress': { label: 'Compress PDFs', hint: 'PDFs are optimized for a smaller file size. Batch results download as a ZIP.', fixedOutput: 'pdf' },
+  'document-pdf': { label: 'Convert documents', hint: 'Word, Excel, PowerPoint, OpenDocument, CSV, and RTF files convert to PDF.', fixedOutput: 'pdf' },
+  ocr: { label: 'Extract text', hint: 'OCR reads English text from images or PDF pages and returns editable text files.', fixedOutput: 'txt' }
+};
+
 let queuedFiles = [];
 let operation = 'convert';
 
 function extensionOf(file) { return file.name.split('.').pop().toLowerCase(); }
-function isImage(file) { return !['pdf'].includes(extensionOf(file)); }
+function isImage(file) { return imageExtensions.has(extensionOf(file)); }
+function isPdf(file) { return pdfExtensions.has(extensionOf(file)); }
+function isOffice(file) { return officeExtensions.has(extensionOf(file)); }
 function formatSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -33,6 +55,9 @@ function formatSize(bytes) {
 function iconFor(file) {
   const ext = extensionOf(file);
   if (ext === 'pdf') return 'PDF';
+  if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) return 'DOC';
+  if (['xls', 'xlsx', 'ods', 'csv'].includes(ext)) return 'SHEET';
+  if (['ppt', 'pptx', 'odp'].includes(ext)) return 'SLIDE';
   if (ext === 'svg') return 'SVG';
   if (ext === 'heic' || ext === 'heif') return 'HEIC';
   return ext.toUpperCase();
@@ -41,6 +66,16 @@ function announce(message, type = 'info') {
   statusMessage.textContent = message;
   statusMessage.dataset.type = type;
   statusMessage.hidden = !message;
+}
+function eligibilityError() {
+  if (!queuedFiles.length) return '';
+  if (['compress', 'resize', 'crop'].includes(operation) && !queuedFiles.every(isImage)) return 'This image tool accepts image files only.';
+  if (operation === 'pdf-merge' && (!queuedFiles.every(isPdf) || queuedFiles.length < 2)) return 'Choose at least two PDF files to merge.';
+  if (['pdf-split', 'pdf-extract', 'pdf-compress'].includes(operation) && !queuedFiles.every(isPdf)) return 'This PDF tool accepts PDF files only.';
+  if (operation === 'document-pdf' && !queuedFiles.every(isOffice)) return 'Document to PDF accepts Word, Excel, PowerPoint, OpenDocument, CSV, or RTF files only.';
+  if (operation === 'ocr' && !queuedFiles.every((file) => isImage(file) || isPdf(file))) return 'OCR accepts PDF and image files only.';
+  if (operation === 'convert' && !queuedFiles.every((file) => isImage(file) || isPdf(file))) return 'Choose “Document → PDF” for document files.';
+  return '';
 }
 function validateFiles(files) {
   const current = [...queuedFiles];
@@ -63,7 +98,7 @@ function addSelectedFiles(files) {
 function renderQueue() {
   fileWorkspace.hidden = queuedFiles.length === 0;
   fileCount.textContent = `(${queuedFiles.length})`;
-  convertButton.innerHTML = `Convert ${queuedFiles.length || ''} file${queuedFiles.length === 1 ? '' : 's'} <span aria-hidden="true">→</span>`;
+  convertButton.innerHTML = `${toolDetails[operation].label} <span aria-hidden="true">→</span>`;
   fileList.innerHTML = queuedFiles.map((file, index) => `
     <article class="file-row">
       <span class="file-type file-type-${extensionOf(file)}">${iconFor(file)}</span>
@@ -74,30 +109,28 @@ function renderQueue() {
   updateSettings();
 }
 function updateSettings() {
-  const imageOnly = operation !== 'convert';
-  const allImages = queuedFiles.every(isImage);
-  if (imageOnly && !allImages) {
-    settingsHint.textContent = 'Image editing tools work with image files only. Remove PDFs or switch back to Convert.';
-  } else if (operation === 'compress') {
-    settingsHint.textContent = 'Choose a quality level to reduce file size. Lower values create smaller files.';
-  } else if (operation === 'resize') {
-    settingsHint.textContent = 'Set one dimension to preserve proportions, or set both for your chosen fit.';
-  } else if (operation === 'crop') {
-    settingsHint.textContent = 'Enter a final frame size. FileMind crops from the center.';
-  } else {
-    settingsHint.textContent = 'Choose an output format. PDF pages export as images; multiple outputs download as a ZIP.';
-  }
-  document.querySelector('.quality-field').hidden = !(operation === 'compress' || outputFormat.value === 'jpg' || outputFormat.value === 'webp');
-  document.querySelectorAll('.dimension-field, .fit-field').forEach((field) => { field.hidden = !(operation === 'resize' || operation === 'crop'); });
+  const detail = toolDetails[operation];
+  const needsDimensions = ['resize', 'crop'].includes(operation);
+  const usesQuality = operation === 'compress' || (operation === 'convert' && ['jpg', 'webp'].includes(outputFormat.value));
+  const extractsPages = operation === 'pdf-extract';
+  outputFormatField.hidden = Boolean(detail.fixedOutput);
+  if (detail.fixedOutput) outputFormat.value = detail.fixedOutput === 'txt' ? 'png' : detail.fixedOutput;
+  document.querySelector('.quality-field').hidden = !usesQuality;
+  document.querySelectorAll('.dimension-field, .fit-field').forEach((field) => { field.hidden = !needsDimensions; });
+  document.querySelector('.page-start-field').hidden = !extractsPages;
+  document.querySelector('.page-end-field').hidden = !extractsPages;
+  document.querySelector('.ocr-language-field').hidden = operation !== 'ocr';
   const pdfOption = outputFormat.querySelector('option[value="pdf"]');
-  pdfOption.disabled = queuedFiles.some((file) => extensionOf(file) === 'pdf') || operation !== 'convert';
+  pdfOption.disabled = queuedFiles.some(isPdf) || operation !== 'convert';
   if (pdfOption.disabled && outputFormat.value === 'pdf') outputFormat.value = 'png';
+  settingsHint.textContent = eligibilityError() || detail.hint;
+  convertButton.disabled = Boolean(eligibilityError());
 }
 function setOperation(nextOperation) {
   operation = nextOperation;
   toolTabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.operation === operation));
   if (operation !== 'convert' && outputFormat.value === 'pdf') outputFormat.value = 'png';
-  updateSettings();
+  renderQueue();
 }
 
 chooseFiles.addEventListener('click', () => fileInput.click());
@@ -117,8 +150,10 @@ outputFormat.addEventListener('change', updateSettings);
 convertForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!queuedFiles.length) { announce('Choose one or more files first.', 'error'); return; }
-  if (operation !== 'convert' && !queuedFiles.every(isImage)) { announce('Resize, crop, and compression are available for image files only.', 'error'); return; }
+  const sourceError = eligibilityError();
+  if (sourceError) { announce(sourceError, 'error'); return; }
   if ((operation === 'resize' || operation === 'crop') && !widthInput.value && !heightInput.value) { announce('Add a width or height before converting.', 'error'); return; }
+  if (operation === 'pdf-extract' && pageEndInput.value && !pageStartInput.value) { announce('Add the first page when choosing a last page.', 'error'); return; }
 
   const formData = new FormData();
   queuedFiles.forEach((file) => formData.append('files', file));
@@ -128,9 +163,12 @@ convertForm.addEventListener('submit', async (event) => {
   formData.append('width', widthInput.value);
   formData.append('height', heightInput.value);
   formData.append('fit', fitInput.value);
+  formData.append('pageStart', pageStartInput.value);
+  formData.append('pageEnd', pageEndInput.value);
+  formData.append('ocrLanguage', ocrLanguageInput.value);
   convertButton.disabled = true;
-  convertButton.innerHTML = '<span class="spinner" aria-hidden="true"></span> Converting…';
-  announce('Processing your files locally on the server. Your download will start shortly.', 'info');
+  convertButton.innerHTML = '<span class="spinner" aria-hidden="true"></span> Processing…';
+  announce('Processing your files privately on the server. Your download will start shortly.', 'info');
   try {
     const response = await fetch('/api/convert', { method: 'POST', body: formData });
     if (!response.ok) {

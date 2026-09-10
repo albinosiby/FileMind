@@ -12,10 +12,19 @@ test('normalizes common image names and formats', () => {
 test('accepts only supported source file types', () => {
   assert.equal(isSupportedInput('logo.svg'), true);
   assert.equal(isSupportedInput('scan.pdf'), true);
+  assert.equal(isSupportedInput('proposal.docx'), true);
+  assert.equal(isSupportedInput('budget.xlsx'), true);
+  assert.equal(isSupportedInput('slides.pptx'), true);
   assert.equal(isSupportedInput('archive.zip'), false);
 });
 
 test('rejects invalid conversion options', () => {
   assert.throws(() => parseOptions({ outputFormat: 'zip' }), /valid output format/);
   assert.throws(() => parseOptions({ outputFormat: 'png', operation: 'resize' }), /width or height/);
+});
+
+test('uses fixed output formats for PDF, document, and OCR tools', () => {
+  assert.equal(parseOptions({ operation: 'pdf-merge' }).outputFormat, 'pdf');
+  assert.equal(parseOptions({ operation: 'document-pdf' }).outputFormat, 'pdf');
+  assert.equal(parseOptions({ operation: 'ocr' }).outputFormat, 'txt');
 });
