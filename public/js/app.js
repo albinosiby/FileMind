@@ -3,6 +3,12 @@ const dropZone = document.querySelector('#drop-zone');
 const chooseFiles = document.querySelector('#choose-files');
 const addFiles = document.querySelector('#add-files');
 const clearFiles = document.querySelector('#clear-files');
+const changeAction = document.querySelector('#change-action');
+const actionPicker = document.querySelector('#action-picker');
+const uploadPanel = document.querySelector('#workspace');
+const uploadTitle = document.querySelector('#upload-title');
+const uploadHelp = document.querySelector('#upload-help');
+const selectedActionLabel = document.querySelector('#selected-action-label');
 const fileWorkspace = document.querySelector('#file-workspace');
 const fileList = document.querySelector('#file-list');
 const fileCount = document.querySelector('#file-count');
@@ -20,7 +26,7 @@ const settingsHint = document.querySelector('#settings-hint');
 const convertForm = document.querySelector('#convert-form');
 const convertButton = document.querySelector('#convert-button');
 const statusMessage = document.querySelector('#status-message');
-const toolTabs = document.querySelectorAll('.tool-tab');
+const actionOptions = document.querySelectorAll('.action-option');
 
 const MAX_FILES = 10;
 const MAX_SIZE = 25 * 1024 * 1024;
@@ -29,25 +35,32 @@ const pdfExtensions = new Set(['pdf']);
 const officeExtensions = new Set(['doc', 'docx', 'odt', 'rtf', 'xls', 'xlsx', 'ods', 'csv', 'ppt', 'pptx', 'odp']);
 const acceptedExtensions = new Set([...imageExtensions, ...pdfExtensions, ...officeExtensions]);
 const toolDetails = {
-  convert: { label: 'Convert files', hint: 'Choose an output format. PDF pages export as images; multiple outputs download as a ZIP.' },
-  compress: { label: 'Compress images', hint: 'Choose a quality level to reduce file size. Lower values create smaller files.' },
-  resize: { label: 'Resize images', hint: 'Set one dimension to preserve proportions, or set both for your chosen fit.' },
-  crop: { label: 'Crop images', hint: 'Enter a final frame size. FileMind crops from the center.' },
-  'pdf-merge': { label: 'Merge PDFs', hint: 'Choose two or more PDFs. They will be combined in the order shown.', fixedOutput: 'pdf' },
-  'pdf-split': { label: 'Split PDF', hint: 'Each PDF page is exported separately. Multi-page results download as a ZIP.', fixedOutput: 'pdf' },
-  'pdf-extract': { label: 'Extract pages', hint: 'Optionally set the first and last page to extract. Leave both blank for all pages.', fixedOutput: 'pdf' },
-  'pdf-compress': { label: 'Compress PDFs', hint: 'PDFs are optimized for a smaller file size. Batch results download as a ZIP.', fixedOutput: 'pdf' },
-  'document-pdf': { label: 'Convert documents', hint: 'Word, Excel, PowerPoint, OpenDocument, CSV, and RTF files convert to PDF.', fixedOutput: 'pdf' },
-  ocr: { label: 'Extract text', hint: 'OCR reads English text from images or PDF pages and returns editable text files.', fixedOutput: 'txt' }
+  convert: { label: 'Convert files', uploadTitle: 'Upload an image or PDF', accept: '.jpg,.jpeg,.png,.webp,.svg,.heic,.heif,.pdf', hint: 'Choose an output format. PDF pages export as images; multiple outputs download as a ZIP.' },
+  compress: { label: 'Compress images', uploadTitle: 'Upload images to compress', accept: '.jpg,.jpeg,.png,.webp,.svg,.heic,.heif', hint: 'Choose a quality level to reduce file size. Lower values create smaller files.' },
+  resize: { label: 'Resize images', uploadTitle: 'Upload images to resize', accept: '.jpg,.jpeg,.png,.webp,.svg,.heic,.heif', hint: 'Set one dimension to preserve proportions, or set both for your chosen fit.' },
+  crop: { label: 'Crop images', uploadTitle: 'Upload images to crop', accept: '.jpg,.jpeg,.png,.webp,.svg,.heic,.heif', hint: 'Enter a final frame size. FileMind crops from the center.' },
+  'pdf-merge': { label: 'Merge PDFs', uploadTitle: 'Upload PDFs to merge', accept: '.pdf', hint: 'Choose two or more PDFs. They will be combined in the order shown.', fixedOutput: 'pdf' },
+  'pdf-split': { label: 'Split PDF', uploadTitle: 'Upload a PDF to split', accept: '.pdf', hint: 'Each PDF page is exported separately. Multi-page results download as a ZIP.', fixedOutput: 'pdf' },
+  'pdf-extract': { label: 'Extract pages', uploadTitle: 'Upload a PDF to extract pages', accept: '.pdf', hint: 'Optionally set the first and last page to extract. Leave both blank for all pages.', fixedOutput: 'pdf' },
+  'pdf-compress': { label: 'Compress PDFs', uploadTitle: 'Upload PDFs to compress', accept: '.pdf', hint: 'PDFs are optimized for a smaller file size. Batch results download as a ZIP.', fixedOutput: 'pdf' },
+  'document-pdf': { label: 'Convert documents', uploadTitle: 'Upload documents to convert', accept: '.doc,.docx,.odt,.rtf,.xls,.xlsx,.ods,.csv,.ppt,.pptx,.odp', hint: 'Word, Excel, PowerPoint, OpenDocument, CSV, and RTF files convert to PDF.', fixedOutput: 'pdf' },
+  ocr: { label: 'Extract text', uploadTitle: 'Upload an image or PDF for OCR', accept: '.jpg,.jpeg,.png,.webp,.svg,.heic,.heif,.pdf', hint: 'OCR reads English text from images or PDF pages and returns editable text files.', fixedOutput: 'txt' }
 };
 
 let queuedFiles = [];
-let operation = 'convert';
+let operation = null;
 
 function extensionOf(file) { return file.name.split('.').pop().toLowerCase(); }
 function isImage(file) { return imageExtensions.has(extensionOf(file)); }
 function isPdf(file) { return pdfExtensions.has(extensionOf(file)); }
 function isOffice(file) { return officeExtensions.has(extensionOf(file)); }
+function isCompatibleWithOperation(file) {
+  if (['compress', 'resize', 'crop'].includes(operation)) return isImage(file);
+  if (['pdf-merge', 'pdf-split', 'pdf-extract', 'pdf-compress'].includes(operation)) return isPdf(file);
+  if (operation === 'document-pdf') return isOffice(file);
+  if (operation === 'ocr' || operation === 'convert') return isImage(file) || isPdf(file);
+  return false;
+}
 function formatSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -78,9 +91,11 @@ function eligibilityError() {
   return '';
 }
 function validateFiles(files) {
+  if (!operation) throw new Error('Choose an action before uploading files.');
   const current = [...queuedFiles];
   for (const file of files) {
     if (!acceptedExtensions.has(extensionOf(file))) throw new Error(`${file.name} is not a supported file type.`);
+    if (!isCompatibleWithOperation(file)) throw new Error(`${file.name} is not compatible with ${toolDetails[operation].label.toLowerCase()}.`);
     if (file.size > MAX_SIZE) throw new Error(`${file.name} is larger than 25 MB.`);
     if (current.some((existing) => existing.name === file.name && existing.size === file.size)) continue;
     current.push(file);
@@ -98,6 +113,7 @@ function addSelectedFiles(files) {
 function renderQueue() {
   fileWorkspace.hidden = queuedFiles.length === 0;
   fileCount.textContent = `(${queuedFiles.length})`;
+  if (!operation) return;
   convertButton.innerHTML = `${toolDetails[operation].label} <span aria-hidden="true">→</span>`;
   fileList.innerHTML = queuedFiles.map((file, index) => `
     <article class="file-row">
@@ -109,6 +125,7 @@ function renderQueue() {
   updateSettings();
 }
 function updateSettings() {
+  if (!operation) return;
   const detail = toolDetails[operation];
   const needsDimensions = ['resize', 'crop'].includes(operation);
   const usesQuality = operation === 'compress' || (operation === 'convert' && ['jpg', 'webp'].includes(outputFormat.value));
@@ -128,9 +145,16 @@ function updateSettings() {
 }
 function setOperation(nextOperation) {
   operation = nextOperation;
-  toolTabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.operation === operation));
+  const detail = toolDetails[operation];
+  actionOptions.forEach((option) => option.classList.toggle('is-active', option.dataset.operation === operation));
+  fileInput.accept = detail.accept;
+  uploadTitle.textContent = detail.uploadTitle;
+  uploadHelp.textContent = `${detail.accept.replaceAll('.', '').replaceAll(',', ', ').toUpperCase()} · Up to 25 MB each`;
+  selectedActionLabel.textContent = detail.label.toUpperCase();
+  uploadPanel.hidden = false;
   if (operation !== 'convert' && outputFormat.value === 'pdf') outputFormat.value = 'png';
   renderQueue();
+  uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 chooseFiles.addEventListener('click', () => fileInput.click());
@@ -142,13 +166,15 @@ fileInput.addEventListener('change', () => { addSelectedFiles([...fileInput.file
 ['dragleave', 'drop'].forEach((eventName) => dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('is-dragging'); }));
 dropZone.addEventListener('drop', (event) => addSelectedFiles([...event.dataTransfer.files]));
 clearFiles.addEventListener('click', () => { queuedFiles = []; renderQueue(); announce(''); });
+changeAction.addEventListener('click', () => actionPicker.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 fileList.addEventListener('click', (event) => { const button = event.target.closest('.remove-file'); if (!button) return; queuedFiles.splice(Number(button.dataset.index), 1); renderQueue(); });
-toolTabs.forEach((tab) => tab.addEventListener('click', () => setOperation(tab.dataset.operation)));
+actionOptions.forEach((option) => option.addEventListener('click', () => setOperation(option.dataset.operation)));
 quality.addEventListener('input', () => { qualityValue.textContent = quality.value; });
 outputFormat.addEventListener('change', updateSettings);
 
 convertForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (!operation) { announce('Choose an action before uploading files.', 'error'); return; }
   if (!queuedFiles.length) { announce('Choose one or more files first.', 'error'); return; }
   const sourceError = eligibilityError();
   if (sourceError) { announce(sourceError, 'error'); return; }

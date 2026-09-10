@@ -22,7 +22,7 @@
           <a href="#privacy">Privacy</a>
           <a href="#faq">FAQ</a>
         </nav>
-        <a class="header-pill" href="#workspace">Free to use</a>
+        <a class="header-pill" href="#action-picker">Free to use</a>
       </header>
 
       <main id="top">
@@ -31,15 +31,45 @@
           <h1 id="hero-title">Convert files <span>without the clutter</span></h1>
           <p class="hero-copy">Convert, compress, edit, merge, scan, and batch process images, PDFs, and Office documents in one clean, private workspace.</p>
 
-          <section class="upload-panel soft-panel" id="workspace" aria-labelledby="upload-title">
+          <section class="action-picker soft-panel" id="action-picker" aria-labelledby="action-picker-title">
+            <div class="action-picker-heading">
+              <div><p class="section-kicker">STEP 1</p><h2 id="action-picker-title">What do you need to do?</h2></div>
+              <p>Pick an action first. FileMind will then ask only for compatible files.</p>
+            </div>
+            <div class="action-groups">
+              <div class="action-group">
+                <p class="tool-group-label">IMAGE TOOLS</p>
+                <div class="action-grid" role="group" aria-label="Choose an image action">
+                  <button class="action-option" type="button" data-operation="convert"><b>Convert image</b><span>JPG, PNG, WebP, SVG, HEIC</span></button>
+                  <button class="action-option" type="button" data-operation="compress"><b>Compress image</b><span>Make images smaller</span></button>
+                  <button class="action-option" type="button" data-operation="resize"><b>Resize image</b><span>Set exact dimensions</span></button>
+                  <button class="action-option" type="button" data-operation="crop"><b>Crop image</b><span>Refine the frame</span></button>
+                </div>
+              </div>
+              <div class="action-group">
+                <p class="tool-group-label">PDF, DOCUMENT &amp; TEXT</p>
+                <div class="action-grid" role="group" aria-label="Choose a PDF, document, or OCR action">
+                  <button class="action-option" type="button" data-operation="pdf-merge"><b>Merge PDFs</b><span>Combine two or more PDFs</span></button>
+                  <button class="action-option" type="button" data-operation="pdf-split"><b>Split PDF</b><span>Download pages separately</span></button>
+                  <button class="action-option" type="button" data-operation="pdf-extract"><b>Extract pages</b><span>Choose a page range</span></button>
+                  <button class="action-option" type="button" data-operation="pdf-compress"><b>Compress PDF</b><span>Reduce file size</span></button>
+                  <button class="action-option" type="button" data-operation="document-pdf"><b>Document → PDF</b><span>Word, Excel, PowerPoint</span></button>
+                  <button class="action-option" type="button" data-operation="ocr"><b>OCR → Text</b><span>Read text from scans</span></button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="upload-panel soft-panel" id="workspace" aria-labelledby="upload-title" hidden>
             <form id="convert-form" novalidate>
               <input id="file-input" name="files" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.svg,.heic,.heif,.doc,.docx,.odt,.rtf,.xls,.xlsx,.ods,.csv,.ppt,.pptx,.odp" multiple hidden />
               <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-describedby="upload-help">
                 <span class="upload-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.4 17.5a4.5 4.5 0 0 0-1.5-8.73A7 7 0 0 0 5.2 10.3 3.8 3.8 0 0 0 5 17.9"/></svg>
                 </span>
+                <p class="section-kicker">STEP 2</p>
                 <h2 id="upload-title">Drop files here, or click to browse</h2>
-                <p id="upload-help">Images, PDFs, Word, Excel, PowerPoint, SVG, HEIC · Up to 25 MB each</p>
+                <p id="upload-help">Choose an action to see compatible file types.</p>
                 <button class="button button-primary" id="choose-files" type="button">Choose files</button>
                 <p class="privacy-line"><span aria-hidden="true">♙</span> Files deleted automatically after processing</p>
               </div>
@@ -49,32 +79,14 @@
           <section class="workspace soft-panel" id="file-workspace" aria-labelledby="queue-title" hidden>
             <div class="workspace-heading">
               <div>
-                <p class="section-kicker">READY TO PROCESS</p>
+                <p class="section-kicker">STEP 3 · <span id="selected-action-label">READY TO PROCESS</span></p>
                 <h2 id="queue-title">Your files <span id="file-count">(0)</span></h2>
               </div>
-              <button class="text-button" id="clear-files" type="button">Clear all</button>
+              <div class="workspace-tools"><button class="text-button" id="change-action" type="button">Change action</button><button class="text-button" id="clear-files" type="button">Clear all</button></div>
             </div>
             <div class="file-list" id="file-list" aria-live="polite"></div>
 
             <div class="conversion-settings" aria-label="Conversion settings">
-              <p class="tool-group-label">IMAGE TOOLS</p>
-              <div class="settings-row tool-tabs" role="group" aria-label="Choose an image tool">
-                <button class="tool-tab is-active" type="button" data-operation="convert">Convert</button>
-                <button class="tool-tab" type="button" data-operation="compress">Compress</button>
-                <button class="tool-tab" type="button" data-operation="resize">Resize</button>
-                <button class="tool-tab" type="button" data-operation="crop">Crop</button>
-              </div>
-
-              <p class="tool-group-label">PDF, DOCUMENT &amp; TEXT</p>
-              <div class="settings-row tool-tabs" role="group" aria-label="Choose a PDF, document, or OCR tool">
-                <button class="tool-tab" type="button" data-operation="pdf-merge">Merge PDFs</button>
-                <button class="tool-tab" type="button" data-operation="pdf-split">Split PDF</button>
-                <button class="tool-tab" type="button" data-operation="pdf-extract">Extract pages</button>
-                <button class="tool-tab" type="button" data-operation="pdf-compress">Compress PDF</button>
-                <button class="tool-tab" type="button" data-operation="document-pdf">Document → PDF</button>
-                <button class="tool-tab" type="button" data-operation="ocr">OCR → Text</button>
-              </div>
-
               <div class="settings-row fields-row">
                 <label class="field output-format-field"><span>Convert to</span><select id="output-format" name="outputFormat"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option><option value="pdf">PDF</option></select></label>
                 <label class="field quality-field"><span>Quality <b id="quality-value">82</b></span><input id="quality" name="quality" type="range" min="20" max="100" value="82" /></label>
