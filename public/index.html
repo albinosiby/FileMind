@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="FileMind converts and optimizes files privately, quickly, and without a signup." />
+    <title>FileMind — Convert files without the clutter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header container">
+        <a class="brand" href="#top" aria-label="FileMind home">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>FileMind</span>
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="#tools">Tools</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="header-pill" href="#workspace">Free to use</a>
+      </header>
+
+      <main id="top">
+        <section class="hero container" aria-labelledby="hero-title">
+          <p class="eyebrow">PRIVATE FILE UTILITY</p>
+          <h1 id="hero-title">Convert files <span>without the clutter</span></h1>
+          <p class="hero-copy">Convert, compress, resize, crop, and batch process your images and PDFs in one clean, private workspace.</p>
+
+          <section class="upload-panel soft-panel" id="workspace" aria-labelledby="upload-title">
+            <form id="convert-form" novalidate>
+              <input id="file-input" name="files" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.svg,.heic,.heif" multiple hidden />
+              <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-describedby="upload-help">
+                <span class="upload-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 16l-4-4-4 4M12 12v9"/><path d="M20.4 17.5a4.5 4.5 0 0 0-1.5-8.73A7 7 0 0 0 5.2 10.3 3.8 3.8 0 0 0 5 17.9"/></svg>
+                </span>
+                <h2 id="upload-title">Drop files here, or click to browse</h2>
+                <p id="upload-help">JPG, PNG, WebP, PDF, SVG, HEIC · Up to 25 MB each</p>
+                <button class="button button-primary" id="choose-files" type="button">Choose files</button>
+                <p class="privacy-line"><span aria-hidden="true">♙</span> Files deleted automatically after processing</p>
+              </div>
+            </form>
+          </section>
+
+          <section class="workspace soft-panel" id="file-workspace" aria-labelledby="queue-title" hidden>
+            <div class="workspace-heading">
+              <div>
+                <p class="section-kicker">READY TO PROCESS</p>
+                <h2 id="queue-title">Your files <span id="file-count">(0)</span></h2>
+              </div>
+              <button class="text-button" id="clear-files" type="button">Clear all</button>
+            </div>
+            <div class="file-list" id="file-list" aria-live="polite"></div>
+
+            <div class="conversion-settings" aria-label="Conversion settings">
+              <div class="settings-row tool-tabs" role="group" aria-label="Choose a tool">
+                <button class="tool-tab is-active" type="button" data-operation="convert">Convert</button>
+                <button class="tool-tab" type="button" data-operation="compress">Compress</button>
+                <button class="tool-tab" type="button" data-operation="resize">Resize</button>
+                <button class="tool-tab" type="button" data-operation="crop">Crop</button>
+              </div>
+
+              <div class="settings-row fields-row">
+                <label class="field"><span>Convert to</span><select id="output-format" name="outputFormat"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option><option value="pdf">PDF</option></select></label>
+                <label class="field quality-field"><span>Quality <b id="quality-value">82</b></span><input id="quality" name="quality" type="range" min="20" max="100" value="82" /></label>
+                <label class="field dimension-field"><span>Width</span><input id="width" name="width" type="number" min="1" max="10000" placeholder="Auto" /></label>
+                <label class="field dimension-field"><span>Height</span><input id="height" name="height" type="number" min="1" max="10000" placeholder="Auto" /></label>
+                <label class="field fit-field"><span>Fit</span><select id="fit" name="fit"><option value="cover">Fill frame</option><option value="contain">Keep all</option></select></label>
+              </div>
+              <p class="settings-hint" id="settings-hint">Choose an output format. Your files keep their original quality unless you choose compression.</p>
+            </div>
+
+            <div class="workspace-actions">
+              <button class="button button-secondary" id="add-files" type="button">Add more files</button>
+              <button class="button button-primary convert-button" id="convert-button" type="submit" form="convert-form">Convert files <span aria-hidden="true">→</span></button>
+            </div>
+          </section>
+
+          <div class="status-message" id="status-message" role="status" aria-live="polite" hidden></div>
+        </section>
+
+        <section class="tools-section container" id="tools" aria-labelledby="tools-title">
+          <div class="section-intro"><p class="eyebrow">WHAT FILEMIND HANDLES</p><h2 id="tools-title">The essentials, kept simple.</h2></div>
+          <div class="tool-grid">
+            <article class="tool-card"><span>01</span><h3>Image conversion</h3><p>JPG, PNG, and WebP in either direction.</p></article>
+            <article class="tool-card"><span>02</span><h3>PDF tools</h3><p>Create PDFs from images or export pages as images.</p></article>
+            <article class="tool-card"><span>03</span><h3>Image refinement</h3><p>Compress, resize, and crop with precise controls.</p></article>
+            <article class="tool-card"><span>04</span><h3>Batch processing</h3><p>Convert up to ten files and receive one tidy ZIP.</p></article>
+          </div>
+        </section>
+
+        <section class="trust-section container" id="privacy" aria-labelledby="privacy-title">
+          <div class="trust-card soft-panel"><span class="trust-number">01</span><div><h2 id="privacy-title">Privacy by design</h2><p>Files are stored only long enough to complete your conversion and download. Remaining temporary files are automatically cleared.</p></div></div>
+          <div class="trust-card soft-panel"><span class="trust-number">02</span><div><h2>Accurate processing</h2><p>Sharp handles image pixels and metadata directly. Lossless conversions retain image data; quality settings only affect formats where compression is expected.</p></div></div>
+        </section>
+
+        <section class="faq-section container" id="faq" aria-labelledby="faq-title">
+          <p class="eyebrow">COMMON QUESTIONS</p><h2 id="faq-title">Clear answers, no fine print.</h2>
+          <details><summary>Do I need an account?</summary><p>No. Basic conversions work immediately without registration.</p></details>
+          <details><summary>What happens to my files?</summary><p>They are kept temporarily for processing and removed automatically after download or scheduled cleanup.</p></details>
+          <details><summary>Will conversion reduce image quality?</summary><p>Not by default. JPG and WebP are compressed formats, so their selected quality affects size and fidelity. PNG output remains lossless unless palette compression is selected.</p></details>
+        </section>
+      </main>
+
+      <footer class="site-footer container"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><span></span></span><span>FileMind</span></a><p>Fast processing · Private by design · No signup</p></footer>
+    </div>
+    <script src="/js/app.js" defer></script>
+  </body>
+</html>
